@@ -1,20 +1,34 @@
-#Example that scans a computer for connected instruments that
-#are compatible with the VISA communication protocol.
+#!/usr/bin/python
+# Example that scans a computer for connected instruments that
+# are compatible with the VISA communication protocol.
 #
-#The instrument VISA resource ID for each compatible instrument
-#is then listed.
+# The instrument VISA resource ID for each compatible instrument
+# is then listed.
 #
 #
-#Dependencies:
-#Python 3.4 32 bit
-#PyVisa 1.7
+# Dependencies:
+# Python 3.4 32 bit
+# PyVisa 1.7
 #
-#Rev 1: 08302018 JC
+# Rev 1: 08302018 JC
 
 import visa, sys, time, numpy
+import argparse
+
+#------------------------------------------------------------------------------
+# default parameter values
+#------------------------------------------------------------------------------
+nevents   = None
+wait_time = None
+output_fn = None
+ofile     = None
+header    = None
 
 #------------------------------------------------------------------------------
 def init():
+#------------------------------------------------------------------------------
+# check available resources and print them
+#------------------------------------------------------------------------------
     rm  = visa.ResourceManager()
     res = rm.list_resources();
     print(res)
@@ -22,25 +36,28 @@ def init():
     # this is our scope
     tek = rm.open_resource('GPIB0::1::INSTR')
     q = tek.query("*IDN?");
-    print(q.strip());
+    ofile.write("%s\n"%q.strip());
 
     tek.timeout    = 2000;
     tek.term_chars = " ";
     tek.clear()
-
+#------------------------------------------------------------------------------
+# turn acquisition OFF
+#------------------------------------------------------------------------------
+    tek.write("ACQuire:STATE OFF")
+#------------------------------------------------------------------------------
+# set HEADER OFF and print to confirm that
+#------------------------------------------------------------------------------
     # tek.write("HEADER ON")
     tek.write("HEADER OFF")
-    
     header = int(tek.query("HEADER?"));
     print("header = %i"%header);
-
-    tek.write("ACQuire:STATE OFF")
-
+   
     tek.write("DATA:START 1")
     tek.write("DATA:STOP %i"%nSamples)
 
     result = tek.query("DATA?").strip()
-    print("DATA: result=%s"%result);
+    ofile.write("DATA: result=%s\n"%result);
 #------------------------------------------------------------------------------
 # print waveform format specifications
 # 's' - string
@@ -49,25 +66,63 @@ def init():
     tek.write("DATA:ENCdg  ASCII")
     tek.write("WFMO:BN_F RI");
     result = tek.query("WFMOutpre?")
-    print("WFMOutpre:CH1: ",result);
+    ofile.write("WFMOutpre:CH1: %s\n"%result.strip());
+
+    nw = len(result.split(';'));
+
+    nch_read = 0;
+    cmd      = None
+    if (nw > 5) :
+        cmd      = "DATA:SOURCE CH1"
+        nch_read = 1
 
     tek.write("DATA:SOURCE CH2")
     tek.write("DATA:ENCdg  ASCII")
     tek.write("WFMO:BN_F RI");
     result = tek.query("WFMOutpre?")
-    print("WFMOutpre:CH2: ",result);
+    ofile.write("WFMOutpre:CH2: %s\n"%result.strip());
+
+    nw = len(result.split(';'));
+    if (nw > 5) :
+        if (cmd == None): cmd = "DATA:SOURCE CH2"
+        else            : cmd = cmd+", CH2"
+        nch_read = nch_read+1
+
+    tek.write("DATA:SOURCE CH3")
+    tek.write("DATA:ENCdg  ASCII")
+    tek.write("WFMO:BN_F RI");
+    result = tek.query("WFMOutpre?")
+    ofile.write("WFMOutpre:CH3: %s\n"%result.strip());
+
+    nw = len(result.split(';'));
+    if (nw > 5) :
+        if (cmd == None): cmd = "DATA:SOURCE CH3"
+        else            : cmd = cmd+", CH3"
+        nch_read = nch_read+1
+
+    tek.write("DATA:SOURCE CH4")
+    tek.write("DATA:ENCdg  ASCII")
+    tek.write("WFMO:BN_F RI");
+    result = tek.query("WFMOutpre?")
+    ofile.write("WFMOutpre:CH4: %s\n"%result.strip());
+
+    nw = len(result.split(';'));
+    if (nw > 5) :
+        if (cmd == None): cmd = "DATA:SOURCE CH4"
+        else            : cmd = cmd+", CH4"
+        nch_read = nch_read+1
+
 #------------------------------------------------------------------------------
-# finally, read two channels
+# finally, specify channels to read
 #------------------------------------------------------------------------------
-    tek.write("ACQuire:STATE OFF")
-    tek.write("DATA:SOURCE CH1, CH2")
+    if (cmd) : tek.write(cmd)
 
     return (tek)
 
 #------------------------------------------------------------------------------
 def read_trigger(tek,trigNum):
 
-    print ("trigger = %i"%trigNum)
+    ofile.write ("trigger = %i\n"%trigNum)
 
     header = int(tek.query("HEADER?"));
     
@@ -105,28 +160,48 @@ def read_trigger(tek,trigNum):
 #------------------------------------------------------------------------------
     ip=0;
     for x in values:
-        print("%6i,"%x),  # comma in the end tells not to print "\n"
+        ofile.write("%6i,"%x);  # comma in the end tells not to print "\n"
         ip = ip+1;
         if (ip == 20):
-            print("");
+            ofile.write("\n");
             ip = 0
 
-    if (ip != 0): print ("");
+    if (ip != 0): ofile.write("\n");
 #------------------------------------------------------------------------------
 # end of waiting, return
 #------------------------------------------------------------------------------
-nSamples = 500
-debug    = None
-scope    = None
+nSamples  = 500
+debug     = None
+scope     = None
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", "--nevents"  , type=int  , default = 1   ,
+                        help="number of events to process")
+    parser.add_argument("-w", "--wait_time", type=float, default = 0.04,
+                        help="wait time")
+    parser.add_argument("-o", "--output_fn"            , default = "/dev/stdout",
+                        help="output filename")
+    args = parser.parse_args()
+
+    if (args.nevents  ) : nevents   = args.nevents
+    if (args.wait_time) : wait_time = args.wait_time;
+    if (args.output_fn) : output_fn = args.output_fn;
+
+    print("nevents   : %i"%nevents)
+    print("wait_time : %f"%wait_time)
+    print("output_fn : %s"%output_fn)
+
+
+    ofile = open(output_fn,"w");
 
     scope = init();
 
     q = scope.query("*IDN?");
-    print(q);
+    print(q.strip());
     
-    nevents = int(sys.argv[1]);
+#    nevents = int(sys.argv[1]);
     
     for i in range(nevents):
         read_trigger(scope,i)

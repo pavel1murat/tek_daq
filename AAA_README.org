@@ -1,0 +1,25 @@
+# to tead a Tek scope using PyVISA:
+
+* General: 
+
+  download linux-gpib , start from https://linux-gpib.sourceforge.io/
+
+  - it took a couple of edits - smth had changed in the call signatures
+
+  go to /projects/products/linux-gpib-4.2.0 and build and install linux-gpib,
+  both kernel and user parts
+
+  modprobe ni_usb_gpib
+
+
+  - after that, can start talking to GPIB bus over USB-to-GPIB cable ($170 on eBay)
+
+  - VISA_Infiniium - initial version by Katie, tek_daq supercedes it
+
+* Development: 
+
+  <2019-04-24 Wed> : will add PyQT-based interface
+  <2019-04-23 Tue> : add command line parameter parsing, by default write .txt to /dev/null
+  
+
+    
