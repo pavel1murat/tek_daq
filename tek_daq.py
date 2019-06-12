@@ -12,8 +12,8 @@
 #
 # Rev 1: 08302018 JC
 
-import visa, sys, time, numpy
-import argparse
+import sys, time, numpy, argparse
+import pyvisa as visa
 
 #------------------------------------------------------------------------------
 # default parameter values
@@ -32,7 +32,7 @@ def init():
     rm  = visa.ResourceManager()
     res = rm.list_resources();
     print(res)
-    
+
     # this is our scope
     tek = rm.open_resource('GPIB0::1::INSTR')
     q = tek.query("*IDN?");
@@ -52,7 +52,7 @@ def init():
     tek.write("HEADER OFF")
     header = int(tek.query("HEADER?"));
     print("header = %i"%header);
-   
+
     tek.write("DATA:START 1")
     tek.write("DATA:STOP %i"%nSamples)
 
@@ -125,7 +125,7 @@ def read_trigger(tek,trigNum):
     ofile.write ("trigger = %i\n"%trigNum)
 
     header = int(tek.query("HEADER?"));
-    
+
     tek.write("ACQuire:STATE ON")
     tek.write("ACQuire:STOPAFTER SEQUENCE")
 #------------------------------------------------------------------------------
@@ -138,7 +138,7 @@ def read_trigger(tek,trigNum):
 
         if (header == 1) : busy = int(result.split()[1])
         else             : busy = int(result)
-        
+
         if (debug) : print("result = %s busy=%i"%(result,busy));
 #------------------------------------------------------------------------------
 # when done, disable further acquisition and read the collected waveform
@@ -200,10 +200,12 @@ if __name__ == '__main__':
 
     q = scope.query("*IDN?");
     print(q.strip());
-    
+
 #    nevents = int(sys.argv[1]);
-    
+
     for i in range(nevents):
+        if (i/5).is_integer() == True:
+            print("Event {0}".format(i))
         read_trigger(scope,i)
 
 #    print("#-------------- DAQ run ended -------------")

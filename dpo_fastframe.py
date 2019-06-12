@@ -15,7 +15,7 @@ Anaconda includes NumPy and MatPlotLib
 Tested on DPO5204B, MSO72004, DPO7104C, and MSO58
 """
 
-import visa
+import pyvisa as visa
 import numpy as np
 import matplotlib.pyplot as plt
 
