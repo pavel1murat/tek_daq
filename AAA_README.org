@@ -1,6 +1,11 @@
 # to tead a Tek scope using PyVISA:
-
+* test
 * General: 
+
+  *update* : 
+
+  - 
+  - loading the driver doesn't seem necessary - we work over USB ...
 
   download linux-gpib , start from https://linux-gpib.sourceforge.io/
 
