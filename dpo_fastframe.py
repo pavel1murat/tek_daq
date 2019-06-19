@@ -18,6 +18,7 @@ Tested on DPO5204B, MSO72004, DPO7104C, and MSO58
 import pyvisa as visa
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 def get_waveform_info():
     """Gather waveform transfer information from scope."""
@@ -25,13 +26,13 @@ def get_waveform_info():
     dpo.write('acquire:state on')
     dpo.query('*OPC?')
     binaryFormat = dpo.query('wfmoutpre:bn_fmt?').rstrip()
-    print('Binary format: ', binaryFormat)
+    # print('Binary format: ',binaryFormat)
     numBytes = dpo.query('wfmoutpre:byt_nr?').rstrip()
-    print('Number of Bytes: ', numBytes)
+    # print('Number of Bytes: ',numBytes)
     byteOrder = dpo.query('wfmoutpre:byt_or?').rstrip()
-    print('Byte order: ', byteOrder)
+    # print('Byte order: ',byteOrder)
     encoding = dpo.query('data:encdg?').rstrip()
-    print('Encoding: ', encoding)
+    # print('Encoding: ',encoding)
     if 'RIB' in encoding or 'FAS' in encoding:
         dType = 'b'
         bigEndian = True
@@ -57,60 +58,83 @@ def get_waveform_info():
     return dType, bigEndian
 
 
-"""#################SEARCH/CONNECT#################"""
+"""############### SEARCH/CONNECT ###############"""
 # establish communication with dpo
 rm = visa.ResourceManager()
-dpo = rm.open_resource('TCPIP::192.168.1.84::INSTR')
-dpo.timeout = 10000
+res = rm.list_resources()
+dpo = rm.open_resource('GPIB::1::INSTR')
+dpo.timeout = 100000
 dpo.encoding = 'latin_1'
-print(dpo.query('*idn?'))
+print((dpo.query('*idn?')).strip())
+
+
+"""############### CONFIGURE INSTRUMENT ###############"""
+
+"""
 dpo.write('*rst')
 
-
-"""#################CONFIGURE INSTRUMENT#################"""
 # variables for individual settings
-hScale = 1e-6
-numFrames = 10
-vScale = 0.5
-vPos = -2.5
-trigLevel = 0.15
+hScale    =  1e-6    # horizontal scale
+nframes =  10      # number of frames
+vScale    =  0.5     # vertical scale
+vPos      = -0.00125 # vertical position, GS/s
+trigLevel =  0.15    # trigger threshold, in volts
 
 # dpo setup
 dpo.write('acquire:state off')
 dpo.write('horizontal:mode:scale {}'.format(hScale))
 dpo.write('horizontal:fastframe:state on')
-dpo.write('horizontal:fastframe:count {}'.format(numFrames))
+dpo.write('horizontal:fastframe:count {}'.format(nframes))
 dpo.write('ch1:scale {}'.format(vScale))
 dpo.write('ch1:position {}'.format(vPos))
 dpo.write('trigger:a:level:ch1 {}'.format(trigLevel))
 print('Horizontal, vertical, and trigger settings configured.')
+"""
 
-# configure data transfer settings
+# Configure data transfer settings
+
+# set number of frames to capture from command line
+parser = argparse.ArgumentParser()
+parser.add_argument("-n","--nframes",type=int,default=1,help="number of frames to process")
+args = parser.parse_args()
+if (args.nframes) : nframes = args.nframes
+
+dpo.write('acquire:state off')
+dpo.write('horizontal:fastframe:state on')
+dpo.write('horizontal:fastframe:count {}'.format(nframes))
 dpo.write('header off')
-dpo.write('horizontal:fastframe:sumframe average')
+
 dpo.write('data:encdg fastest')
 dpo.write('data:source ch1')
-recordLength = int(dpo.query('horizontal:mode:recordlength?').strip())
+
+# record length determines number of waveforms captured
+recordLength = int(dpo.query('horizontal:fastframe:length?').strip())
 dpo.write('data:stop {}'.format(recordLength))
+
+startFrame = 1
+dpo.write('data:framestart {}'.format(startFrame))
+dpo.write('data:framestop {}'.format(nframes))
+
 dpo.write('wfmoutpre:byt_n 1')
-dpo.write('data:framestart 10')
-dpo.write('data:framestop 10')
 print('Data transfer settings configured.')
 
-
-"""#################ACQUIRE DATA#################"""
+"""###############ACQUIRE DATA###############"""
 print('Acquiring waveform.')
 dpo.write('acquire:stopafter sequence')
 dpo.write('acquire:state on')
 dpo.query('*opc?')
-print('Waveform acquired.\n')
+print('Waveform acquired.')
 
 # Retrieve vertical and horizontal scaling information
 yOffset = float(dpo.query('wfmoutpre:yoff?'))
 yMult = float(dpo.query('wfmoutpre:ymult?'))
 yZero = float(dpo.query('wfmoutpre:yzero?'))
 
-numPoints = int(dpo.query('wfmoutpre:nr_pt?'))
+numPoints = int(dpo.query('wfmoutpre:nr_pt?'))*nframes
+print('Record length:',recordLength)
+print('Number of frames plotted:',nframes)
+print('Number of points:',numPoints)
+
 xIncr = float(dpo.query('wfmoutpre:xincr?'))
 xZero = float(dpo.query('wfmoutpre:xzero?'))
 
@@ -118,17 +142,28 @@ dType, bigEndian = get_waveform_info()
 data = dpo.query_binary_values(
     'curve?', datatype=dType, is_big_endian=bigEndian, container=np.array)
 
-"""#################PLOT DATA#################"""
+
+"""################ ACQUIRE TIMESTAMPS ###############"""
+
+allTStamps = dpo.query('horizontal:fastframe:timestamp:all:ch1? {0},{1}'.format(startFrame,nframes))
+allTStamps = allTStamps.strip()
+allTStamps = allTStamps.replace('"','')
+tstamps = allTStamps.split(",")
+print('TIMESTAMPS')
+for i in tstamps:
+    print(i)
+
+
+"""############### PLOT DATA ###############"""
 # Using the scaling information, rescale the binary data
-scaleddata = (data - yOffset) * yMult + yZero
+scaleddata = (data - yOffset) * yMult + yZero  # sets y scale
 scaledtime = np.arange(xZero, xZero + (xIncr * numPoints), xIncr)
 
-print('Plot generated.')
 # plot the figure with correct scaling
 plt.subplot(111, facecolor='k')
 plt.plot(scaledtime * 1e3, scaleddata, color='y')
 plt.ylabel('Voltage (V)')
-plt.xlabel('Time (msec)')
+plt.xlabel('Time (millisec)')
 plt.tight_layout()
 plt.show()
 
