@@ -14,6 +14,7 @@
 
 import sys, time, numpy, argparse
 import pyvisa as visa
+from datetime import datetime
 
 #------------------------------------------------------------------------------
 # default parameter values
@@ -198,14 +199,25 @@ if __name__ == '__main__':
 
     scope = init();
 
+#   print and write datetime at start of run
+    dt = str(datetime.now())
+    tek.write("RUN_START_TIME: %s"%dt)
+    ofile.write("RUN_START_TIME: %s\n"%dt)
+
+
     q = scope.query("*IDN?");
     print(q.strip());
 
-#    nevents = int(sys.argv[1]);
+#   nevents = int(sys.argv[1]);
 
     for i in range(nevents):
         if (i/5).is_integer() == True:
             print("Event {0}".format(i))
         read_trigger(scope,i)
+
+#   print and write datetime at end of run
+    dt = str(datetime.now())
+    tek.write("RUN_END_TIME: %s"%dt)
+    ofile.write("RUN_END_TIME: %s\n"%dt)
 
 #    print("#-------------- DAQ run ended -------------")
