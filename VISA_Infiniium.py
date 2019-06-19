@@ -2,11 +2,9 @@
 # This program illustrates a few commonly-used programming
 # features of your Agilent Infiniium Series oscilloscope.
 # *********************************************************
-import visa
-import string
+import pyvisa as visa
+import string, sys, time
 #import struct
-import sys
-import time
 import numpy as np
 #------------------------------------------------------------------------------
 # globals
@@ -70,18 +68,18 @@ def trigger():
     while triggered=='1\n':
         time.sleep(0.5)
         triggered = inf.query("BUSY?")
-        
+
 # =========================================================
 # Save:     SAVE:WAVEform CH2,"C:\\TekScope\\Data\\abcd.csv"
 # =========================================================
 def save():
-    inf.write("SAVE:WAVEform:FILEFormat SPREADSHEETCsv")  
+    inf.write("SAVE:WAVEform:FILEFormat SPREADSHEETCsv")
     cmd = "SAVE:WAVEform CH2,'C:\\TekScope\\Data\\"+ wave_csv_name + ".csv'"
     inf.write(cmd)
-    #inf.write("EXPort START") 
-   
+    #inf.write("EXPort START")
+
 #-----------------------------------------------------------------------------
-# main 
+# main
 #-----------------------------------------------------------------------------
 if __name__ == '__main__':
 
