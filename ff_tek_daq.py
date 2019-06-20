@@ -31,14 +31,13 @@ def init():
     tek.encoding   = 'latin_1'
     tek.term_chars = " "
     tek.clear()
+
 #------------------------------------------------------------------------------
 # configure data transfer settings
 #------------------------------------------------------------------------------
-
     tek.write('acquire:state off')
     tek.write('horizontal:fastframe:state on')
     tek.write('header off')
-
     tek.write('data:encdg fastest')
 
     recordLength = int(tek.query('horizontal:fastframe:length?').strip())
@@ -50,16 +49,16 @@ def init():
 # determine which channels have input
 #------------------------------------------------------------------------------
     result = tek.query("DATA?").strip()
-    ofile.write("DATA: result=%s\n"%result);
+    ofile.write("DATA: result=%s\n"%result)
     tek.write("DATA:SOURCE CH1")
     tek.write("DATA:ENCdg  ASCII")
-    tek.write("WFMO:BN_F RI");
+    tek.write("WFMO:BN_F RI")
     result = tek.query("WFMOutpre?")
-    ofile.write("WFMOutpre:CH1: %s\n"%result.strip());
+    ofile.write("WFMOutpre:CH1: %s\n"%result.strip())
 
-    nw = len(result.split(';'));
+    nw = len(result.split(';'))
 
-    nch_read = 0;
+    nch_read = 0
     cmd      = None
     if (nw > 5) :
         cmd      = "DATA:SOURCE CH1"
@@ -67,11 +66,11 @@ def init():
 
     tek.write("DATA:SOURCE CH2")
     tek.write("DATA:ENCdg  ASCII")
-    tek.write("WFMO:BN_F RI");
+    tek.write("WFMO:BN_F RI")
     result = tek.query("WFMOutpre?")
-    ofile.write("WFMOutpre:CH2: %s\n"%result.strip());
+    ofile.write("WFMOutpre:CH2: %s\n"%result.strip())
 
-    nw = len(result.split(';'));
+    nw = len(result.split(';'))
     if (nw > 5) :
         if (cmd == None): cmd = "DATA:SOURCE CH2"
         else            : cmd = cmd+", CH2"
@@ -79,11 +78,11 @@ def init():
 
     tek.write("DATA:SOURCE CH3")
     tek.write("DATA:ENCdg  ASCII")
-    tek.write("WFMO:BN_F RI");
+    tek.write("WFMO:BN_F RI")
     result = tek.query("WFMOutpre?")
-    ofile.write("WFMOutpre:CH3: %s\n"%result.strip());
+    ofile.write("WFMOutpre:CH3: %s\n"%result.strip())
 
-    nw = len(result.split(';'));
+    nw = len(result.split(';'))
     if (nw > 5) :
         if (cmd == None): cmd = "DATA:SOURCE CH3"
         else            : cmd = cmd+", CH3"
@@ -91,11 +90,11 @@ def init():
 
     tek.write("DATA:SOURCE CH4")
     tek.write("DATA:ENCdg  ASCII")
-    tek.write("WFMO:BN_F RI");
+    tek.write("WFMO:BN_F RI")
     result = tek.query("WFMOutpre?")
-    ofile.write("WFMOutpre:CH4: %s\n"%result.strip());
+    ofile.write("WFMOutpre:CH4: %s\n"%result.strip())
 
-    nw = len(result.split(';'));
+    nw = len(result.split(';'))
     if (nw > 5) :
         if (cmd == None): cmd = "DATA:SOURCE CH4"
         else            : cmd = cmd+", CH4"
@@ -105,9 +104,7 @@ def init():
 # finally, specify which channels to read
 #------------------------------------------------------------------------------
     if (cmd) : tek.write(cmd)
-
     print('Data transfer settings configured.')
-
     return (tek)
 
 
@@ -175,13 +172,9 @@ if __name__ == '__main__':
     # print("wait_time : {}".format(wait_time))
     # print("output_fn : {}".format(output_fn))
 
-    ofile = open(output_fn,"w");
+    ofile = open(output_fn,"w")
 
-    startFrame = 1
-    stopFrame  = 10 # sets how many frames to take at a time
-    numRounds  = int(nevents/stopFrame)
-
-    tek = init();
+    tek = init()
 
 #   write starting datetime to file
     dt = str(datetime.now())
@@ -200,22 +193,33 @@ if __name__ == '__main__':
             i -= stopFrame
             stopFrame = nevents - i
             i += stopFrame
+
         # collect and fetch data
         dType, bigEndian = get_waveform_info(startFrame,stopFrame)
         data = tek.query_binary_values(
             'curve?',datatype=dType,is_big_endian=bigEndian,container=np.array)
+
         # fetch and write timestamps to file
         allTStamps = tek.query(
             'horizontal:fastframe:timestamp:all:ch1? {0},{1}'.format(startFrame,stopFrame))
         allTStamps = allTStamps.strip()
         allTStamps = allTStamps.replace('"','')
         tstamps = allTStamps.split(",")
+        ofile.write('>>>Num_Frames: %i\n'%stopFrame)
         for t in tstamps:
             ofile.write(str(t))
             ofile.write('\n')
+
         # write data to file
-        ofile.write(str(data))
-        ofile.write('\n')
+        ip=0;
+        for x in data:
+            ofile.write("%6i,"%x);
+            ip = ip+1;
+            if (ip == 20):
+                ofile.write("\n");
+                ip = 0
+
+        if (ip != 0): ofile.write("\n");
 
     print('Waveforms acquired.')
 
