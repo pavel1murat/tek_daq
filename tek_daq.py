@@ -32,7 +32,6 @@ def init():
 #------------------------------------------------------------------------------
     rm  = visa.ResourceManager()
     res = rm.list_resources();
-    print(res)
 
     # this is our scope
     tek = rm.open_resource('GPIB0::1::INSTR')
@@ -51,8 +50,6 @@ def init():
 #------------------------------------------------------------------------------
     # tek.write("HEADER ON")
     tek.write("HEADER OFF")
-    header = int(tek.query("HEADER?"));
-    print("header = %i"%header);
 
     tek.write("DATA:START 1")
     tek.write("DATA:STOP %i"%nSamples)
@@ -194,30 +191,28 @@ if __name__ == '__main__':
     print("wait_time : %f"%wait_time)
     print("output_fn : %s"%output_fn)
 
-
     ofile = open(output_fn,"w");
 
     scope = init();
 
-#   print and write datetime at start of run
+#   write start time to file
     dt = str(datetime.now())
-    tek.write("RUN_START_TIME: %s"%dt)
-    ofile.write("RUN_START_TIME: %s\n"%dt)
-
+    ofile.write("RUN_START_TIME: %s"%dt)
+    print("RUN_START_TIME: ",dt)
 
     q = scope.query("*IDN?");
     print(q.strip());
 
-#   nevents = int(sys.argv[1]);
+#    nevents = int(sys.argv[1]);
 
     for i in range(nevents):
         if (i/5).is_integer() == True:
             print("Event {0}".format(i))
         read_trigger(scope,i)
 
-#   print and write datetime at end of run
+#   write start time to file
     dt = str(datetime.now())
-    tek.write("RUN_END_TIME: %s"%dt)
     ofile.write("RUN_END_TIME: %s\n"%dt)
+    print("RUN_END_TIME: ",dt)
 
 #    print("#-------------- DAQ run ended -------------")

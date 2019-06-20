@@ -26,13 +26,10 @@ def get_waveform_info():
     dpo.write('acquire:state on')
     dpo.query('*OPC?')
     binaryFormat = dpo.query('wfmoutpre:bn_fmt?').rstrip()
-    # print('Binary format: ',binaryFormat)
-    numBytes = dpo.query('wfmoutpre:byt_nr?').rstrip()
-    # print('Number of Bytes: ',numBytes)
-    byteOrder = dpo.query('wfmoutpre:byt_or?').rstrip()
-    # print('Byte order: ',byteOrder)
-    encoding = dpo.query('data:encdg?').rstrip()
-    # print('Encoding: ',encoding)
+    numBytes     = dpo.query('wfmoutpre:byt_nr?').rstrip()
+    byteOrder    = dpo.query('wfmoutpre:byt_or?').rstrip()
+    encoding     = dpo.query('data:encdg?').rstrip()
+    print('Encoding: ',encoding)
     if 'RIB' in encoding or 'FAS' in encoding:
         dType = 'b'
         bigEndian = True

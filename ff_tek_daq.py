@@ -1,16 +1,7 @@
 #!/usr/bin/python
-# Example that scans a computer for connected instruments that
-# are compatible with the VISA communication protocol.
-#
-# The instrument VISA resource ID for each compatible instrument
-# is then listed.
-#
-#
-# Dependencies:
-# Python 3.4 32 bit
-# PyVisa 1.7
-#
-# Rev 1: 08302018 JC
+"""
+Combination of tek_daq.py and dpo_fastframe.py
+"""
 
 import sys, time, argparse
 import numpy as np
@@ -34,29 +25,24 @@ def init():
     tek = rm.open_resource('GPIB0::1::INSTR')
     q = ((tek.query("*IDN?")).strip())
     print(q)
-    ofile.write("%s\n"%q.strip())
+    ofile.write("%s\n"%q)
 
     tek.timeout    = 100000
-    tek.encoding = 'latin_1'
+    tek.encoding   = 'latin_1'
     tek.term_chars = " "
     tek.clear()
 #------------------------------------------------------------------------------
 # configure data transfer settings
 #------------------------------------------------------------------------------
-    tek.write("acquire:state off")
+
+    tek.write('acquire:state off')
     tek.write('horizontal:fastframe:state on')
-    tek.write('horizontal:fastframe:count {}'.format(nevents))
-    tek.write("header off")
+    tek.write('header off')
 
     tek.write('data:encdg fastest')
-    tek.write('data:source ch1')       #change this to take channel number from cmd
 
     recordLength = int(tek.query('horizontal:fastframe:length?').strip())
     tek.write('data:stop {}'.format(recordLength))
-
-    startFrame = 1
-    tek.write('data:framestart {}'.format(startFrame))
-    tek.write('data:framestop {}'.format(nevents))
 
     tek.write('wfmoutpre:byt_n 1')
 
@@ -116,7 +102,7 @@ def init():
         nch_read = nch_read+1
 
 #------------------------------------------------------------------------------
-# finally, specify channels to read
+# finally, specify which channels to read
 #------------------------------------------------------------------------------
     if (cmd) : tek.write(cmd)
 
@@ -124,14 +110,20 @@ def init():
 
     return (tek)
 
-def get_waveform_info()
-    header = int(tek.query('HEADER?'))
+
+def get_waveform_info(startFrame,stopFrame):
+
+    tek.write('horizontal:fastframe:count {}'.format(stopFrame))
+    tek.write('data:framestart {}'.format(startFrame))
+    tek.write('data:framestop {}'.format(stopFrame))
+
+    tek.write('data:encdg fastest')
     tek.write('acquire:stopafter sequence')
     tek.write('acquire:state on')
     tek.query('*OPC?')
     binaryFormat = tek.query('wfmoutpre:bn_fmt?').rstrip()
     numBytes     = tek.query('wfmoutpre:byt_nr?').rstrip()
-    byteOrder    = tek.query('wfmoutpre:byt:or?').rstrip()
+    byteOrder    = tek.query('wfmoutpre:byt_or?').rstrip()
     encoding     = tek.query('data:encdg?').rstrip()
 
     if 'RIB' in encoding or 'FAS' in encoding:
@@ -156,6 +148,7 @@ def get_waveform_info()
         raise visa.InvalidBinaryFormat('ASCII Formatting.')
     else:
         raise visa.InvalidBinaryFormat
+
     return dType, bigEndian
 
 
@@ -168,36 +161,70 @@ if __name__ == '__main__':
                         help="wait time")
     parser.add_argument("-o", "--output_fn"            , default = "/dev/stdout",
                         help="output filename")
+    parser.add_argument("-r", "--run_number", type=int , default = None  ,
+                        help="run number")
     args = parser.parse_args()
 
-    if (args.nevents  ) : nevents   = args.nevents
-    if (args.wait_time) : wait_time = args.wait_time;
-    if (args.output_fn) : output_fn = args.output_fn;
+    if   (args.nevents  )  : nevents   = args.nevents
+    if   (args.wait_time)  : wait_time = args.wait_time
+    if   (args.run_number) :
+        output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
+    elif (args.output_fn)  : output_fn = args.output_fn
 
-    print("nevents   : {}".format(events))
-    print("wait_time : {}".format(wait_time))
-    print("output_fn : {}".format(output_fn))
+    # print("nevents   : {}".format(nevents))
+    # print("wait_time : {}".format(wait_time))
+    # print("output_fn : {}".format(output_fn))
 
     ofile = open(output_fn,"w");
 
-    scope = init();
+    startFrame = 1
+    stopFrame  = 10 # sets how many frames to take at a time
+    numRounds  = int(nevents/stopFrame)
 
-#   print and write datetime at start of run
+    tek = init();
+
+#   write starting datetime to file
     dt = str(datetime.now())
+    print("RUN_START_TIME: ",dt)
     ofile.write("RUN_START_TIME: %s\n"%dt)
 
-    print('Acquiring waveform.')
-    tek.write('acquire:stopafter sequence')
-    tek.write('acquire:state on')
-    dpo.query('*opc?')
-    print('Waveform acquired.')
+    print('Acquiring waveforms.')
 
-    dType, bigEndian = get_waveform_info()
-    data = tek.query_binary_values('curve?',datatype=dType,is_big_endian=bigEndian,container=np.array)
+    i = 0 # number of events taken
+    while i < nevents:
+        # set how many frames to take in a round
+        startFrame = 1
+        stopFrame = 20 # default number of frames to take each time
+        i += stopFrame
+        if i > nevents:
+            i -= stopFrame
+            stopFrame = nevents - i
+            i += stopFrame
+        # collect and fetch data
+        dType, bigEndian = get_waveform_info(startFrame,stopFrame)
+        data = tek.query_binary_values(
+            'curve?',datatype=dType,is_big_endian=bigEndian,container=np.array)
+        # fetch and write timestamps to file
+        allTStamps = tek.query(
+            'horizontal:fastframe:timestamp:all:ch1? {0},{1}'.format(startFrame,stopFrame))
+        allTStamps = allTStamps.strip()
+        allTStamps = allTStamps.replace('"','')
+        tstamps = allTStamps.split(",")
+        for t in tstamps:
+            ofile.write(str(t))
+            ofile.write('\n')
+        # write data to file
+        ofile.write(str(data))
+        ofile.write('\n')
 
+    print('Waveforms acquired.')
 
-#   print and write datetime at end of run
+#   write ending datetime to file
     dt = str(datetime.now())
-    ofile.write("RUN_END_TIME: %s\n"%dt)
+    print("RUN_END_TIME:  ",dt)
+    ofile.write("RUN_END_TIME: %s"%dt)
 
-#    print("#-------------- DAQ run ended -------------")
+#   np.set_printoptions(threshold=sys.maxsize)
+#   print(data)
+
+    tek.close()
