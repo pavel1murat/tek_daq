@@ -181,13 +181,13 @@ if __name__ == '__main__':
     print("RUN_START_TIME: ",dt)
     ofile.write("RUN_START_TIME: %s\n"%dt)
 
-    print('Acquiring waveforms.')
+    print('Acquiring waveforms...')
 
     i = 0 # number of events taken
     while i < nevents:
         # set how many frames to take in a round
         startFrame = 1
-        stopFrame = 20 # default number of frames to take each time
+        stopFrame  = 1000 # default number of frames to take each read
         i += stopFrame
         if i > nevents:
             i -= stopFrame
@@ -195,11 +195,14 @@ if __name__ == '__main__':
             i += stopFrame
 
         # collect and fetch data
+#        print('collecting waveforms...')
         dType, bigEndian = get_waveform_info(startFrame,stopFrame)
+#        print('transferring waveforms...')
         data = tek.query_binary_values(
             'curve?',datatype=dType,is_big_endian=bigEndian,container=np.array)
 
         # fetch and write timestamps to file
+        # !!! If using channel other than 1, change timestamp query !!!
         allTStamps = tek.query(
             'horizontal:fastframe:timestamp:all:ch1? {0},{1}'.format(startFrame,stopFrame))
         allTStamps = allTStamps.strip()
@@ -220,12 +223,13 @@ if __name__ == '__main__':
                 ip = 0
 
         if (ip != 0): ofile.write("\n");
+        print('Frame {0} complete'.format(i))
 
     print('Waveforms acquired.')
 
 #   write ending datetime to file
     dt = str(datetime.now())
-    print("RUN_END_TIME:  ",dt)
+    print("RUN_END_TIME:   ",dt)
     ofile.write("RUN_END_TIME: %s"%dt)
 
 #   np.set_printoptions(threshold=sys.maxsize)
