@@ -152,14 +152,16 @@ def get_waveform_info(startFrame,stopFrame):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--nevents"  , type=int  , default = 1   ,
+    parser.add_argument("-n", "--nevents"  ,   type=int,   default = 1,
                         help="number of events to process")
-    parser.add_argument("-w", "--wait_time", type=float, default = 0.04,
+    parser.add_argument("-w", "--wait_time",   type=float, default = 0.04,
                         help="wait time")
-    parser.add_argument("-o", "--output_fn"            , default = "/dev/stdout",
+    parser.add_argument("-o", "--output_fn",               default = "/dev/stdout",
                         help="output filename")
-    parser.add_argument("-r", "--run_number", type=int , default = None  ,
+    parser.add_argument("-r", "--run_number",  type=int,   default = None,
                         help="run number")
+    parser.add_argument("-f", "--fr_per_read", type=int,   default = 1000,
+                        help="frames per read")
     args = parser.parse_args()
 
     if   (args.nevents  )  : nevents   = args.nevents
@@ -167,6 +169,7 @@ if __name__ == '__main__':
     if   (args.run_number) :
         output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
     elif (args.output_fn)  : output_fn = args.output_fn
+    if   (args.fr_per_read): fr_per_read = args.fr_per_read
 
     # print("nevents   : {}".format(nevents))
     # print("wait_time : {}".format(wait_time))
@@ -185,9 +188,9 @@ if __name__ == '__main__':
 
     i = 0 # number of events taken
     while i < nevents:
-        # set how many frames to take in a round
+        # set how many frames to take in a read
         startFrame = 1
-        stopFrame  = 1000 # default number of frames to take each read
+        stopFrame  = fr_per_read
         i += stopFrame
         if i > nevents:
             i -= stopFrame
@@ -195,9 +198,7 @@ if __name__ == '__main__':
             i += stopFrame
 
         # collect and fetch data
-#        print('collecting waveforms...')
         dType, bigEndian = get_waveform_info(startFrame,stopFrame)
-#        print('transferring waveforms...')
         data = tek.query_binary_values(
             'curve?',datatype=dType,is_big_endian=bigEndian,container=np.array)
 
@@ -223,6 +224,8 @@ if __name__ == '__main__':
                 ip = 0
 
         if (ip != 0): ofile.write("\n");
+
+        # print frame number after each read
         print('Frame {0} complete'.format(i))
 
     print('Waveforms acquired.')

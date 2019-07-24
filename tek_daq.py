@@ -181,11 +181,15 @@ if __name__ == '__main__':
                         help="wait time")
     parser.add_argument("-o", "--output_fn"            , default = "/dev/stdout",
                         help="output filename")
+    parser.add_argument("-r", "--run_number",  type=int,   default = None,
+                        help="run number")
     args = parser.parse_args()
 
-    if (args.nevents  ) : nevents   = args.nevents
-    if (args.wait_time) : wait_time = args.wait_time;
-    if (args.output_fn) : output_fn = args.output_fn;
+    if   (args.nevents  ) : nevents   = args.nevents
+    if   (args.wait_time) : wait_time = args.wait_time;
+    if   (args.run_number) :
+        output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
+    elif (args.output_fn)  : output_fn = args.output_fn
 
     print("nevents   : %i"%nevents)
     print("wait_time : %f"%wait_time)
@@ -203,10 +207,9 @@ if __name__ == '__main__':
     q = scope.query("*IDN?");
     print(q.strip());
 
-#    nevents = int(sys.argv[1]);
-
     for i in range(nevents):
-        if (i/5).is_integer() == True:
+        if (i/10).is_integer() == True:
+            # print frame number every 10 frames
             print("Event {0}".format(i))
         read_trigger(scope,i)
 
@@ -214,5 +217,3 @@ if __name__ == '__main__':
     dt = str(datetime.now())
     ofile.write("RUN_END_TIME: %s\n"%dt)
     print("RUN_END_TIME: ",dt)
-
-#    print("#-------------- DAQ run ended -------------")
