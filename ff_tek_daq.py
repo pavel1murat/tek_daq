@@ -27,7 +27,7 @@ def init():
     print(q)
     ofile.write("%s\n"%q)
 
-    tek.timeout    = 100000
+    tek.timeout    = 10000000
     tek.encoding   = 'latin_1'
     tek.term_chars = " "
     tek.clear()
@@ -156,10 +156,10 @@ if __name__ == '__main__':
                         help="number of events to process")
     parser.add_argument("-w", "--wait_time",   type=float, default = 0.04,
                         help="wait time")
-    parser.add_argument("-o", "--output_fn",               default = "/dev/stdout",
-                        help="output filename")
     parser.add_argument("-r", "--run_number",  type=int,   default = None,
                         help="run number")
+    parser.add_argument("-o", "--output_fn",               default = "/dev/stdout",
+                        help="output filename")
     parser.add_argument("-f", "--fr_per_read", type=int,   default = 1000,
                         help="frames per read")
     args = parser.parse_args()
@@ -171,9 +171,10 @@ if __name__ == '__main__':
     elif (args.output_fn)  : output_fn = args.output_fn
     if   (args.fr_per_read): fr_per_read = args.fr_per_read
 
-    # print("nevents   : {}".format(nevents))
-    # print("wait_time : {}".format(wait_time))
-    # print("output_fn : {}".format(output_fn))
+    print("~~~~~~~~~~TEK DAQ FASTFRAME~~~~~~~~~~")
+    print("nevents   : {}".format(nevents))
+    print("wait_time : {}".format(wait_time))
+    print("output_fn : {}".format(output_fn))
 
     ofile = open(output_fn,"w")
 
@@ -233,9 +234,9 @@ if __name__ == '__main__':
 #   write ending datetime to file
     dt = str(datetime.now())
     print("RUN_END_TIME:   ",dt)
-    ofile.write("RUN_END_TIME: %s"%dt)
+    ofile.write("RUN_END_TIME: %s\n"%dt)
 
-#   np.set_printoptions(threshold=sys.maxsize)
-#   print(data)
+    tek.write('acquire:state off')
+    tek.write('horizontal:fastframe:state off')
 
     tek.close()
