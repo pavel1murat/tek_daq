@@ -175,14 +175,16 @@ scope     = None
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-n", "--nevents"  , type=int  , default = 1   ,
+    parser.add_argument("-n", "--nevents"  , type=int   , default = 1   ,
                         help="number of events to process")
-    parser.add_argument("-w", "--wait_time", type=float, default = 0.04,
-                        help="wait time")
-    parser.add_argument("-o", "--output_fn"            , default = "/dev/stdout",
+    parser.add_argument("-o", "--output_fn"             , default = "/dev/stdout",
                         help="output filename")
-    parser.add_argument("-r", "--run_number",  type=int,   default = None,
+    parser.add_argument("-p", "--print_freq",type=int   , default = 10,
+                        help="print frequency")
+    parser.add_argument("-r", "--run_number",  type=int , default = None,
                         help="run number")
+    parser.add_argument("-w", "--wait_time" , type=float, default = 0.04,
+                        help="wait time")
     args = parser.parse_args()
 
     if   (args.nevents  ) : nevents   = args.nevents
@@ -190,6 +192,8 @@ if __name__ == '__main__':
     if   (args.run_number) :
         output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
     elif (args.output_fn)  : output_fn = args.output_fn
+
+    print_freq = args.print_freq;
 
     print("nevents   : %i"%nevents)
     print("wait_time : %f"%wait_time)
@@ -201,16 +205,15 @@ if __name__ == '__main__':
 
 #   write start time to file
     dt = str(datetime.now())
-    ofile.write("RUN_START_TIME: %s"%dt)
+    ofile.write("RUN_START_TIME: %s\n"%dt)
     print("RUN_START_TIME: ",dt)
 
     q = scope.query("*IDN?");
     print(q.strip());
 
     for i in range(nevents):
-        if (i/10).is_integer() == True:
-            # print frame number every 10 frames
-            print("Event {0}".format(i))
+        # print frame number every 20 frames
+        if ((i % print_freq) == 0): print("Event {0}".format(i))
         read_trigger(scope,i)
 
 #   write start time to file
