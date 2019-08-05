@@ -7,6 +7,7 @@ import sys, time, argparse
 import numpy as np
 import pyvisa as visa
 from datetime import datetime
+import os.path
 
 # default parameter values
 nevents   = None
@@ -170,6 +171,11 @@ if __name__ == '__main__':
         output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
     elif (args.output_fn)  : output_fn = args.output_fn
     if   (args.fr_per_read): fr_per_read = args.fr_per_read
+
+    if os.path.exists(output_fn) == True:
+        confirm = input("The output file already exists. Overwrite? (yes/no)")
+        if confirm == 'no':
+            sys.exit()
 
     print("~~~~~~~~~~TEK DAQ FASTFRAME~~~~~~~~~~")
     print("nevents   : {}".format(nevents))
