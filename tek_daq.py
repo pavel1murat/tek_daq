@@ -15,6 +15,7 @@
 import os, sys, time, numpy, argparse
 import pyvisa as visa
 from datetime import datetime
+import os.path
 
 #------------------------------------------------------------------------------
 # default parameter values
@@ -38,7 +39,7 @@ def init():
     q = tek.query("*IDN?");
     ofile.write("%s\n"%q.strip());
 
-    tek.timeout    = 2000;
+    tek.timeout    = 10000000;
     tek.term_chars = " ";
     tek.clear()
 #------------------------------------------------------------------------------
@@ -179,12 +180,12 @@ if __name__ == '__main__':
                         help="number of events to process")
     parser.add_argument("-o", "--output_fn"             , default = "/dev/stdout",
                         help="output filename")
-    parser.add_argument("-p", "--print_freq",type=int   , default = 10,
-                        help="print frequency")
     parser.add_argument("-r", "--run_number",  type=int , default = None,
                         help="run number")
     parser.add_argument("-w", "--wait_time" , type=float, default = 0.04,
                         help="wait time")
+    parser.add_argument("-p", "--print_freq",type=int   , default = 10,
+                        help="print frequency")
     args = parser.parse_args()
 
     if (args.nevents  )  : nevents   = args.nevents
@@ -195,8 +196,14 @@ if __name__ == '__main__':
 
     if (args.output_fn != "/dev/stdout")  : output_fn = args.output_fn
 
+    if os.path.exists(output_fn) == True:
+        confirm = input("The output file already exists. Overwrite? (yes/no)")
+        if confirm == 'no':
+            sys.exit()
+
     print_freq = args.print_freq;
 
+    print("~~~~~~~~~~~~~TEK DAQ~~~~~~~~~~~~~")
     print("nevents   : %i"%nevents)
     print("wait_time : %f"%wait_time)
     print("output_fn : %s"%output_fn)
@@ -223,7 +230,7 @@ if __name__ == '__main__':
     print(q.strip());
 
     for i in range(nevents):
-        # print frame number every 20 frames
+        # print frame number intermittently
         if ((i % print_freq) == 0): print("Event {0}".format(i))
         read_trigger(scope,i)
 
