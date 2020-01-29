@@ -12,7 +12,7 @@
 #
 # Rev 1: 08302018 JC
 
-import sys, time, numpy, argparse
+import os, sys, time, numpy, argparse
 import pyvisa as visa
 from datetime import datetime
 
@@ -187,11 +187,13 @@ if __name__ == '__main__':
                         help="wait time")
     args = parser.parse_args()
 
-    if   (args.nevents  ) : nevents   = args.nevents
-    if   (args.wait_time) : wait_time = args.wait_time;
-    if   (args.run_number) :
-        output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
-    elif (args.output_fn)  : output_fn = args.output_fn
+    if (args.nevents  )  : nevents   = args.nevents
+    if (args.wait_time)  : wait_time = args.wait_time;
+    
+    # default filename is defined by the run number, but can be overwritten by "-o"
+    if (args.run_number) : output_fn = "qdgaas.fnal."+format("%06i"%args.run_number)+".txt"
+
+    if (args.output_fn != "/dev/stdout")  : output_fn = args.output_fn
 
     print_freq = args.print_freq;
 
@@ -199,8 +201,17 @@ if __name__ == '__main__':
     print("wait_time : %f"%wait_time)
     print("output_fn : %s"%output_fn)
 
-    ofile = open(output_fn,"w");
-
+    if not os.path.exists(output_fn) :
+        ofile = open(output_fn,"w");
+    else:
+        response = input("Are you sure you want to overwrite the existing file ? ")
+        if (response[0].upper() == "Y") : ofile = open(output_fn,"w")
+        else :
+            print("ERROR: exiting");
+            exit()
+#------------------------------------------------------------------------------
+# output file is open
+#------------------------------------------------------------------------------
     scope = init();
 
 #   write start time to file
@@ -216,7 +227,20 @@ if __name__ == '__main__':
         if ((i % print_freq) == 0): print("Event {0}".format(i))
         read_trigger(scope,i)
 
-#   write start time to file
+#   write end time to file
     dt = str(datetime.now())
     ofile.write("RUN_END_TIME: %s\n"%dt)
     print("RUN_END_TIME: ",dt)
+#------------------------------------------------------------------------------
+# I guess, the following diagnostics is due to something not being formally closed
+# but the data file looks OK
+#------------------------------------------------------------------------------
+# Event 1990
+# RUN_END_TIME:  2020-01-29 12:28:21.599908
+# libgpib: invalid descriptor
+# libgpib: invalid descriptor
+# Exception ignored in: <function Gpib.__del__ at 0x7f42c2081560>
+# Traceback (most recent call last):
+#   File "/usr/lib64/python3.7/site-packages/Gpib.py", line 31, in __del__
+#   File "/usr/lib64/python3.7/site-packages/Gpib.py", line 39, in close
+# gpib.GpibError: close() failed: One or more arguments to the function call were invalid.

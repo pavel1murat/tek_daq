@@ -1,10 +1,11 @@
 # to tead a Tek scope using PyVISA:
 * test
-* General: 
+* General:                           
 
   *update* : 
 
-  - 
+  - need to install pyvisa : pip install pyvisa
+
   - loading the driver doesn't seem necessary - we work over USB ...
 
   download linux-gpib , start from https://linux-gpib.sourceforge.io/
@@ -16,12 +17,13 @@
 
   modprobe ni_usb_gpib
 
+  disable safe boot mode or learn how to sign modules... 
 
   - after that, can start talking to GPIB bus over USB-to-GPIB cable ($170 on eBay)
 
   - VISA_Infiniium - initial version by Katie, tek_daq supercedes it
 
-* Development: 
+* Development:                       
 
   <2019-04-24 Wed> : will add PyQT-based interface
   <2019-04-23 Tue> : add command line parameter parsing, by default write .txt to /dev/null
